@@ -38,6 +38,7 @@ namespace PaymentSwitch.Extensions
             builder.Services.AddScoped<ITransferService, TransferService>();
             builder.Services.AddScoped<IDapperRepository, DapperRepository>();
             builder.Services.AddScoped<IAuthUser, AuthUser>();
+            builder.Services.AddScoped<IAccountService, AccountService>();
             builder.Services.AddScoped<IBaseService, BaseService>();
             builder.Services.AddScoped<AdminUserFilter>();        
 
@@ -119,7 +120,7 @@ namespace PaymentSwitch.Extensions
                                 ApiResult apiResult = new()
                                 {
                                     Count = 0,
-                                    HasError = false,
+                                    IsSuccess = true,
                                     Message = "Token Expired. Request Access Denied".ToLower(),
                                     StatusCode = StatusCodesEnum.TokenExpired
                                 };
@@ -132,7 +133,7 @@ namespace PaymentSwitch.Extensions
                                 ApiResult apiResult = new()
                                 {
                                     Count = 0,
-                                    HasError = false,
+                                    IsSuccess = true,
                                     Message = "Token Validation Has Failed. Request Access Denied".ToLower(),
                                     StatusCode = StatusCodesEnum.NotAuthenticated
                                 };

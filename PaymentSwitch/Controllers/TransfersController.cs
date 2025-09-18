@@ -23,7 +23,7 @@ namespace PaymentSwitch.Controllers
         public async Task<IActionResult> Post([FromBody] TransferRequestDto dto)
         {
             // validate dto, auth, KYC checks, balance check etc.
-            var txRef = await _service.InitiateTransferAsync(dto.FromAccount, dto.ToAccount, dto.ToBankCode, dto.Amount);
+            var txRef = await _service.InitiateTransferAsync(dto.FromAccount, dto.ToAccount, dto.ToBankCode, dto.Amount,dto.tnxRef);
             return StatusCode(200, txRef);
         }
 

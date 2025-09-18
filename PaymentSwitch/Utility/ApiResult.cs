@@ -45,7 +45,7 @@ namespace PaymentSwitch.Utility
 
     public class ApiResult
     {
-        public bool HasError { get; set; } = false;
+        public bool IsSuccess { get; set; } = true;
         public string Message { get; set; }
         public StatusCodesEnum StatusCode { get; set; }
         public int Count { get; set; }

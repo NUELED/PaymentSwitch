@@ -12,25 +12,47 @@ namespace PaymentSwitch.Services.Implementation
         private readonly ITransferRepository _repo;
         private readonly INipClient _nip;
         private readonly ILogger<TransferService> _log;
+        private readonly IAccountService _accountService;
 
-        public TransferService(ITransferRepository repo, INipClient nip, ILogger<TransferService> log)
+        public TransferService(ITransferRepository repo, INipClient nip, ILogger<TransferService> log, IAccountService accountService)
         {
             _repo = repo; 
             _nip = nip; 
             _log = log;
+            _accountService = accountService;   
         }
 
-        public async Task<string> InitiateTransferAsync(string fromAcc, string toAcc, string toBank, decimal amount)
-        {
-            // create or get transactionRef for idempotency
-            var txRef = Guid.NewGuid().ToString("N"); // ideally provided by caller for idempotency
+        /* 
+        Flow Recap:
 
-            var existing = await _repo.GetByRefAsync(txRef);
-            if (existing != null) return existing.TransactionRef;
+        Debit sender account first.
+
+        If debit fails → transaction ends immediately.
+
+        If NIP succeeds → keep debit, mark as Debited.
+
+        If NIP uncertain (98/96) → keep debit, mark PendingQuery until reconciliation job decides.
+
+        If NIP fails → reverse debit by crediting back.
+        */
+
+        public async Task<ApiResult> InitiateTransferAsync(string fromAcc, string toAcc, string toBank, decimal amount,string tnxRef)
+        {
+            var response = new ApiResult();
+
+            //  Check for existing transaction (idempotency)
+            var existing = await _repo.GetByRefAsync(tnxRef);
+            if (existing != null)
+            {
+                response.IsSuccess = existing.Status == TransferStatus.Debited || existing.Status == TransferStatus.Credited;
+                response.Message = $"Transaction already processed with status {existing.Status}";
+                response.Result = existing; 
+                return response;
+            }
 
             var t = new Transfer
             {
-                TransactionRef = txRef,
+                TransactionRef = tnxRef,
                 FromAccount = fromAcc,
                 ToAccount = toAcc,
                 ToBankCode = toBank,
@@ -42,35 +64,74 @@ namespace PaymentSwitch.Services.Implementation
 
             await _repo.CreateAsync(t);
 
-            // call NIP
-            var nipResp = await _nip.SendTransferAsync(txRef, fromAcc, toAcc, toBank, amount);
+            // 3. Debit locally
+            var debitResult = await _accountService.DebitAsync(fromAcc, amount, tnxRef);
 
-            if (nipResp.IsSuccess)
+            if (!debitResult.IsSuccess)
             {
-                t.Status = TransferStatus.Debited;
-                t.Metadata = JsonConvert.SerializeObject(nipResp);
+                t.Status = TransferStatus.Failed;
+                t.ErrorMessage = debitResult.Message;
+                t.UpdatedAt = DateTime.UtcNow;
                 await _repo.UpdateAsync(t);
-                // Optionally trigger credit-check or mark as Credited after query
-                return txRef;
+
+                return new ApiResult
+                {
+                    IsSuccess = false,
+                    Message = $"Debit failed: {debitResult.Message}",
+                    Result = t
+                };
             }
 
-            if (nipResp.ResponseCode == "98" /*TIMEOUT*/ || nipResp.ResponseCode == "96")
+            // 4. Call NIP outward transfer
+            var nipResp = await _nip.SendTransferAsync(tnxRef, fromAcc, toAcc, toBank, amount);
+
+            // 5. Handle NIP responses
+            if (nipResp.IsSuccess)
             {
-                // uncertain result: schedule for reconciliation
+                t.Status = TransferStatus.Debited; // debit confirmed + transfer sent
+                t.Metadata = JsonConvert.SerializeObject(nipResp);
+                t.UpdatedAt = DateTime.UtcNow;
+                await _repo.UpdateAsync(t);
+
+                return new ApiResult
+                {
+                    IsSuccess = true,
+                    Message = "Transfer initiated successfully",
+                    Result = t
+                };
+            }
+
+            if (nipResp.ResponseCode == "98" || nipResp.ResponseCode == "96")
+            {
+                // Uncertain → leave debit in place (money on hold)
                 t.Status = TransferStatus.PendingQuery;
                 t.ErrorMessage = nipResp.ResponseMessage;
                 t.RetryCount++;
                 t.UpdatedAt = DateTime.UtcNow;
                 await _repo.UpdateAsync(t);
-                return txRef; // client sees pending
+
+                return new ApiResult
+                {
+                    IsSuccess = true,
+                    Message = "Transfer status pending. Please query later.",
+                    Result = t
+                };
             }
 
-            // Failed
+            // outright failure → reverse debit
+            await _accountService.CreditAsync(fromAcc, amount, tnxRef);
+
             t.Status = TransferStatus.Failed;
             t.ErrorMessage = nipResp.ResponseMessage;
             t.UpdatedAt = DateTime.UtcNow;
             await _repo.UpdateAsync(t);
-            return txRef;
+
+            return new ApiResult
+            {
+                IsSuccess = true,
+                Message = $"Transfer failed: {nipResp.ResponseMessage}",
+                Result = t
+            };
         }
 
         // Handled by background job, but exposed for manual trigger

@@ -7,5 +7,6 @@
         public string ToBankCode { get; set; } = default!;
         public decimal Amount { get; set; }
         public string ToAccount { get; set; } = default!;
+        public string tnxRef { get; set; } = default!;
     }
 }

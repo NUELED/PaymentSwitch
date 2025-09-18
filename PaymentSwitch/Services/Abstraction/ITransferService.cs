@@ -5,7 +5,7 @@ namespace PaymentSwitch.Services.Abstraction
 {
     public interface ITransferService
     {
-        Task<string> InitiateTransferAsync(string fromAcc, string toAcc, string toBank, decimal amount);
+        Task<ApiResult> InitiateTransferAsync(string fromAcc, string toAcc, string toBank, decimal amount, string tnxRef);
         Task HandlePendingTransactionAsync(Transfer t);
 
     }
