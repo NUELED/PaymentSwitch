@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentSwitch", "PaymentSwitch\PaymentSwitch.csproj", "{4E097299-35A3-4596-8356-3C5E899A956B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentSwitch.WorkerService", "PaymentSwitch.WorkerService\PaymentSwitch.WorkerService.csproj", "{F4A04AD9-89C4-4079-ADC2-DC9BE893B201}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4E097299-35A3-4596-8356-3C5E899A956B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E097299-35A3-4596-8356-3C5E899A956B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E097299-35A3-4596-8356-3C5E899A956B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E097299-35A3-4596-8356-3C5E899A956B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4A04AD9-89C4-4079-ADC2-DC9BE893B201}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4A04AD9-89C4-4079-ADC2-DC9BE893B201}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4A04AD9-89C4-4079-ADC2-DC9BE893B201}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4A04AD9-89C4-4079-ADC2-DC9BE893B201}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {70C9150E-6015-47A3-ABDB-57B0C1FD88BC}
+	EndGlobalSection
+EndGlobal

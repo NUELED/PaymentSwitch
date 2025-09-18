@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-PaymentSwitch.WorkerService-0543289d-4ef6-42bd-bd5d-e241d1ebd899</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
+	
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PaymentSwitch\PaymentSwitch.csproj" />
+  </ItemGroup>
+</Project>
