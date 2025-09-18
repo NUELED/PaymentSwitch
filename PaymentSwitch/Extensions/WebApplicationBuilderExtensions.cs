@@ -32,20 +32,14 @@ namespace PaymentSwitch.Extensions
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddHttpClient();
             builder.Services.AddMemoryCache();
-            builder.Services.AddHttpClient(StaticData.PaymentIntegration)
-                       .AddPolicyHandler(HttpPolicyExtensions
-                       .HandleTransientHttpError()
-                       .Or<AuthenticationException>() // Handle SSL errors
-                       .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
 
             builder.Services.AddScoped<INipClient, NipClient>();
             builder.Services.AddScoped<ITransferRepository, TransferRepository>();
             builder.Services.AddScoped<ITransferService, TransferService>();
             builder.Services.AddScoped<IDapperRepository, DapperRepository>();
             builder.Services.AddScoped<IAuthUser, AuthUser>();
-            builder.Services.AddScoped<AdminUserFilter>();
-            //builder.Services.AddScoped<IBaseService, BaseService>();       
-            //builder.Services.AddScoped<IMibssServiceCalls, MibssServiceCalls>();      
+            builder.Services.AddScoped<IBaseService, BaseService>();
+            builder.Services.AddScoped<AdminUserFilter>();        
 
             builder.Services.AddRateLimiter(ratelimiteroptions =>
             {
@@ -59,13 +53,11 @@ namespace PaymentSwitch.Extensions
                 ratelimiteroptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
 
-
             return builder;
         }
 
         public static WebApplicationBuilder AddJwtConfig(this WebApplicationBuilder builder)
         {
-
             var jwtOption = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
             bool hasExpired = false;
             builder.Services.AddAuthentication(options =>
@@ -74,88 +66,88 @@ namespace PaymentSwitch.Extensions
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-                .AddJwtBearer(options =>
+            .AddJwtBearer(options =>
+            {
+                options.RequireHttpsMetadata = false;
+                options.SaveToken = true;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.RequireHttpsMetadata = false;
-                    options.SaveToken = true;
-                    options.TokenValidationParameters = new TokenValidationParameters
+                    ClockSkew = TimeSpan.Zero,
+                    RequireSignedTokens = true,
+
+                    ValidateLifetime = true,
+                    RequireExpirationTime = true,
+
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOption.Key)),
+
+                    ValidateAudience = true,
+                    ValidAudience = jwtOption.Audience,
+
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOption.Issuer,
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
                     {
-                        ClockSkew = TimeSpan.Zero,
-                        RequireSignedTokens = true,
-
-                        ValidateLifetime = true,
-                        RequireExpirationTime = true,
-
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOption.Key)),
-
-                        ValidateAudience = true,
-                        ValidAudience = jwtOption.Audience,
-
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtOption.Issuer,
-                    };
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnAuthenticationFailed = context =>
+                        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
                         {
-                            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                            hasExpired = true;
+                            context.Response.Headers.Append("Token-Expired", "true");
+                            context.Response.StatusCode = 406;
+                            return Task.CompletedTask;
+                        }
+                        else
+                        {
+                            var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
+                            logger.LogError(context.Exception, "Authentication Failed");
+                            return Task.CompletedTask;
+                        }
+                    },
+                    OnMessageReceived = context =>
+                    {
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = async (context) =>
+                    {
+                        if (context.AuthenticateFailure != null)
+                        {
+                            if (hasExpired)
                             {
-                                hasExpired = true;
-                                context.Response.Headers.Append("Token-Expired", "true");
                                 context.Response.StatusCode = 406;
-                                return Task.CompletedTask;
+                                ApiResult apiResult = new()
+                                {
+                                    Count = 0,
+                                    HasError = false,
+                                    Message = "Token Expired. Request Access Denied".ToLower(),
+                                    StatusCode = StatusCodesEnum.TokenExpired
+                                };
+                                await context.HttpContext.Response.WriteAsync(JsonConvert.SerializeObject(apiResult));
+                                return;
                             }
                             else
                             {
-                                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
-                                logger.LogError(context.Exception, "Authentication Failed");
-                                return Task.CompletedTask;
-                            }
-                        },
-                        OnMessageReceived = context =>
-                        {
-                            return Task.CompletedTask;
-                        },
-                        OnChallenge = async (context) =>
-                        {
-                            if (context.AuthenticateFailure != null)
-                            {
-                                if (hasExpired)
+                                context.Response.StatusCode = 401;
+                                ApiResult apiResult = new()
                                 {
-                                    context.Response.StatusCode = 406;
-                                    ApiResult apiResult = new()
-                                    {
-                                        Count = 0,
-                                        HasError = false,
-                                        Message = "Token Expired. Request Access Denied".ToLower(),
-                                        StatusCode = StatusCodesEnum.TokenExpired
-                                    };
-                                    await context.HttpContext.Response.WriteAsync(JsonConvert.SerializeObject(apiResult));
-                                    return;
-                                }
-                                else
-                                {
-                                    context.Response.StatusCode = 401;
-                                    ApiResult apiResult = new()
-                                    {
-                                        Count = 0,
-                                        HasError = false,
-                                        Message = "Token Validation Has Failed. Request Access Denied".ToLower(),
-                                        StatusCode = StatusCodesEnum.NotAuthenticated
-                                    };
-                                    await context.HttpContext.Response.WriteAsync(JsonConvert.SerializeObject(apiResult));
-                                    return;
-                                }
-                                // we can decide to write our own custom response content here
-                                //await context.HttpContext.SuccessResponse.WriteAsync($"{context.AuthenticateFailure}");
+                                    Count = 0,
+                                    HasError = false,
+                                    Message = "Token Validation Has Failed. Request Access Denied".ToLower(),
+                                    StatusCode = StatusCodesEnum.NotAuthenticated
+                                };
+                                await context.HttpContext.Response.WriteAsync(JsonConvert.SerializeObject(apiResult));
+                                return;
                             }
-                            var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
-                            logger.LogError(context.Error, $"OnChallenge Error{context.Error}::::{context.ErrorDescription}");
-                            return;
-                        },
-                    };
-                });
+                            // we can decide to write our own custom response content here
+                            //await context.HttpContext.SuccessResponse.WriteAsync($"{context.AuthenticateFailure}");
+                        }
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(JwtBearerEvents));
+                        logger.LogError(context.Error, $"OnChallenge Error{context.Error}::::{context.ErrorDescription}");
+                        return;
+                    },
+                };
+            });
 
 
             builder.Services.AddApiVersioning(o =>

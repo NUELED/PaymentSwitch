@@ -1,36 +1,87 @@
-﻿using PaymentSwitch.Services.Abstraction;
+﻿using PaymentSwitch.Models.DTO;
+using PaymentSwitch.Services.Abstraction;
 using PaymentSwitch.Utility;
 
 namespace PaymentSwitch.Services.Implementation
 {
     public class NipClient : INipClient
     {
-        private readonly HttpClient _http;
-        public NipClient(HttpClient http) { _http = http; }
+        private readonly IBaseService _baseService; 
+        private readonly string _nipBaseUrl;
+
+        public NipClient(IBaseService baseService, IConfiguration config)
+        {
+            _baseService = baseService;
+            _nipBaseUrl = config["ProcessorUrls:BaseUrl"] ?? throw new ArgumentNullException("Nip:BaseUrl not configured");
+        }
 
         public async Task<NipResponse> SendTransferAsync(string transactionRef, string fromAcc, string toAcc, string toBank, decimal amount)
         {
-            var payload = new { TransactionRef = transactionRef, FromAcc = fromAcc, ToAcc = toAcc, ToBank = toBank, Amount = amount };
-            var res = await _http.PostAsJsonAsync("/api/nip/transfer", payload);
-            if (!res.IsSuccessStatusCode)
+            var payload = new
             {
-                if ((int)res.StatusCode == 504 || (int)res.StatusCode == 408) // timeout-ish
-                    return new NipResponse { ResponseCode = "98", ResponseMessage = "TIMEOUT" };
-                return new NipResponse { ResponseCode = "96", ResponseMessage = "NETWORK_ERROR" };
-            }
-            return await res.Content.ReadFromJsonAsync<NipResponse>() ?? new NipResponse { ResponseCode = "96", ResponseMessage = "InvalidResponse" };
+                TransactionRef = transactionRef,
+                FromAcc = fromAcc,
+                ToAcc = toAcc,
+                ToBank = toBank,
+                Amount = amount
+            };
+
+            var request = new RequestDto
+            {
+                Url = $"{_nipBaseUrl}/api/nip/transfer",
+                ApiType = AppEnums.ApiType.POST,
+                Data = payload
+            };
+
+            var response = await _baseService.SendAsync<NipResponse>(request);
+
+            return response?.IsSuccess == true
+                ? (NipResponse)response.Result!
+                : new NipResponse
+                {
+                    ResponseCode = "96",
+                    ResponseMessage = response?.Message ?? "NETWORK_ERROR"
+                };
         }
 
         public async Task<NipResponse> QueryAsync(string transactionRef)
         {
-            var res = await _http.GetAsync($"/api/nip/query/{transactionRef}");
-            return await res.Content.ReadFromJsonAsync<NipResponse>() ?? new NipResponse { ResponseCode = "96", ResponseMessage = "InvalidResponse" };
+            var request = new RequestDto
+            {
+                Url = $"{_nipBaseUrl}/api/nip/query/{transactionRef}",
+                ApiType = AppEnums.ApiType.GET
+            };
+
+            var response = await _baseService.SendAsync<NipResponse>(request);
+
+            return response?.IsSuccess == true
+                ? (NipResponse)response.Result!
+                : new NipResponse
+                {
+                    ResponseCode = "96",
+                    ResponseMessage = response?.Message ?? "NETWORK_ERROR"
+                };
         }
 
         public async Task<NipResponse> ReverseAsync(string transactionRef)
         {
-            var res = await _http.PostAsJsonAsync("/api/nip/reverse", new { TransactionRef = transactionRef });
-            return await res.Content.ReadFromJsonAsync<NipResponse>() ?? new NipResponse { ResponseCode = "96", ResponseMessage = "InvalidResponse" };
+            var request = new RequestDto
+            {
+                Url = $"{_nipBaseUrl}/api/nip/reverse",
+                ApiType = AppEnums.ApiType.POST,
+                Data = new { TransactionRef = transactionRef }
+            };
+
+            var response = await _baseService.SendAsync<NipResponse>(request);
+
+            return response?.IsSuccess == true
+                ? (NipResponse)response.Result!
+                : new NipResponse
+                {
+                    ResponseCode = "96",
+                    ResponseMessage = response?.Message ?? "NETWORK_ERROR"
+                };
         }
+
     }
 }

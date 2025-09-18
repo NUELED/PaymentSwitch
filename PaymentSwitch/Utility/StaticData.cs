@@ -79,18 +79,21 @@ namespace PaymentSwitch.Utility
         public const string AccessDenied = "Access Denied";
         public const string ErrorContent = "Error Content";
         public const string AnErrorOccurred = "An error occurred";
-        public const string EmptyPayload = "Payload cannot be empty.";
-        public const string ValidtionError = "Validation error occurred.";
-        public const string BranchnfoValidtionError = "Validation failed for BranchInfo. Errors: {@Errors}";
-        public const string ApiCallLogMessage = "API call failed.";
-        public const string NIBSSICADCredentials = "NIBSSICADCredentials";
-        public const string UnknownError = "Unknown Error Occurred. Please try again later";
+        public const string EmptyPayload = "Payload cannot be empty.";   
         public const string Con_Strings = "ConnectionStrings";
         public const string BG_Settings = "BackgroundSettings";
+        public const string ApiCallLogMessage = "API call failed.";
         public const string DefaultConnection = "DefaultConnection";
+        public const string ValidtionError = "Validation error occurred.";
+        public const string NIBSSICADCredentials = "NIBSSICADCredentials";
         public const string DateRange = "The date range cannot exceed 30 days.";
-        public const string FailedToRetrieveAccessToken = "Failed to retrieve access token";
+        public const string HttpRequest_ErrorContent = "Error Content: {ErrorContent}";
+        public const string UnknownError = "Unknown Error Occurred. Please try again later";
+        public const string FailedToRetrieveAccessToken = "Failed to retrieve access token";       
+        public const string RequestFailedWithStatusCode = "Request failed with status code";
+        public const string BranchnfoValidtionError = "Validation failed for BranchInfo. Errors: {@Errors}";
         public const string AnErrorOccurredDuringRequestProcessing = "An error occurred during request processing.";
+        public const string LogMessage_ApiRequest = "API Request - Time: {StartTime}, Endpoint: {Url}, Payload: {Payload}";
         public const string SecuritySchemeDescription = "Enter the Bearer Authorization string as following : `Bearer Generated-JWT-Token`";
         #endregion
 
