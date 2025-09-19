@@ -5,6 +5,7 @@ namespace PaymentSwitch.Services.Abstraction
     public interface IAccountService
     {
         Task<ApiResult> DebitAsync(string accountNumber, decimal amount, string refId);
+        Task<ApiResult> DebitAsync_WithSp(string accountNumber, decimal amount, string refId);
         Task<ApiResult> CreditAsync(string accountNumber, decimal amount, string refId);
     }
 }

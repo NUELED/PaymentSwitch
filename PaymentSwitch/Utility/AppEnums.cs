@@ -31,6 +31,20 @@
         }
 
         public enum TransferStatus { PendingDebitAttempt, Debited, Credited, Failed, Reversed, PendingQuery }
+        public enum AccountType 
+        {
+            Savings, 
+            Current,
+            Cooperate,
+            Government
+        }
+
+        public enum AccountTier
+        {
+            Tier1,
+            Tier2,
+            Tier3
+        }
 
     }
 }
