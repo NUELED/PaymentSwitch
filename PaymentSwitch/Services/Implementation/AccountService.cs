@@ -20,6 +20,7 @@ namespace PaymentSwitch.Services.Implementation
         {
             var sql_GetAccount = Queries_StoredProcedures.FETCH_ACCOUNT;
             var sql_UpdateAccount_AferTransaction = Queries_StoredProcedures.UPDATE_ACCOUNT_AFTER_TRANSACTION;
+            var sql_InsertTransaction = Queries_StoredProcedures.INSERT_ACCOUNT_TRANSACTION;
 
             var param = new DynamicParameters();
             param.Add("@AccountNumber", accountNumber);
@@ -42,6 +43,23 @@ namespace PaymentSwitch.Services.Implementation
             updateParams.Add("@AccountNumber", account.AccountNumber);
 
             var rows = await _dapperRepo.ExecuteSqlAsync(sql_UpdateAccount_AferTransaction, updateParams);
+
+            // inside DebitAsync after updating balance
+            if (rows > 0)
+            {
+                var trxParams = new DynamicParameters();
+                trxParams.Add("@AccountId", account.Id);
+                trxParams.Add("@TransactionRef", refId);
+                trxParams.Add("@Amount", amount);
+                trxParams.Add("@TransactionType", "DEBIT");
+                trxParams.Add("@TransactionDate", DateTime.UtcNow);
+                trxParams.Add("@BalanceBefore", account.Balance + amount);  // before debit
+                trxParams.Add("@BalanceAfter", account.Balance);            // after debit
+                trxParams.Add("@Narration", $"Debit of {amount}");
+                trxParams.Add("@Status", "Successful");
+
+                await _dapperRepo.ExecuteSqlAsync(sql_InsertTransaction, trxParams);
+            }
 
             return new ApiResult
             {
@@ -73,6 +91,7 @@ namespace PaymentSwitch.Services.Implementation
         {
             var sql_GetAccount = Queries_StoredProcedures.FETCH_ACCOUNT;
             var sql_UpdateAccount_AferTransaction = Queries_StoredProcedures.UPDATE_ACCOUNT_AFTER_TRANSACTION;
+            var sql_InsertTransaction = Queries_StoredProcedures.INSERT_ACCOUNT_TRANSACTION;
 
             var param = new DynamicParameters();
             param.Add("@AccountNumber", accountNumber);
@@ -92,6 +111,23 @@ namespace PaymentSwitch.Services.Implementation
             updateParams.Add("@AccountNumber", account.AccountNumber);
 
             var rows = await _dapperRepo.ExecuteSqlAsync(sql_UpdateAccount_AferTransaction, updateParams);
+
+            // inside CreditAsync after updating balance
+            if (rows > 0)
+            {
+                var trxParams = new DynamicParameters();
+                trxParams.Add("@AccountId", account.Id);
+                trxParams.Add("@TransactionRef", refId);
+                trxParams.Add("@Amount", amount);
+                trxParams.Add("@TransactionType", "CREDIT");
+                trxParams.Add("@TransactionDate", DateTime.UtcNow);
+                trxParams.Add("@BalanceBefore", account.Balance - amount);  // before credit
+                trxParams.Add("@BalanceAfter", account.Balance);            // after credit
+                trxParams.Add("@Narration", $"Credit of {amount}");
+                trxParams.Add("@Status", "Successful");
+
+                await _dapperRepo.ExecuteSqlAsync(sql_InsertTransaction, trxParams);
+            }
 
             return new ApiResult
             {

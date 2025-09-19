@@ -84,6 +84,47 @@ namespace PaymentSwitch.Utility
 
 
 
+
+        #endregion
+
+
+
+
+        #region AccountTransactions Queries
+
+        public const string CREATE_ACCT_TRANS_LOG_TABLE = @"CREATE TABLE AccountTransactions
+                                                            (
+                                                                TransactionId BIGINT IDENTITY(1,1) 
+                                                                    CONSTRAINT PK_AccountTransactions PRIMARY KEY,
+
+                                                                AccountId UNIQUEIDENTIFIER NOT NULL 
+                                                                    CONSTRAINT FK_AccountTransactions_Accounts 
+                                                                    FOREIGN KEY REFERENCES Accounts(Id),
+
+                                                                TransactionRef NVARCHAR(50) NOT NULL, -- external ref (e.g., NIP Ref, UUID, etc.)
+                                                                Amount DECIMAL(18,2) NOT NULL,
+                                                                TransactionType NVARCHAR(20) NOT NULL CHECK (TransactionType IN ('Debit', 'Credit')),
+
+                                                                TransactionDate DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+
+                                                                BalanceBefore DECIMAL(18,2) NOT NULL,
+                                                                BalanceAfter DECIMAL(18,2) NOT NULL,
+
+                                                                Narration NVARCHAR(255) NULL,
+
+                                                                Status NVARCHAR(50) NOT NULL DEFAULT 'Pending', -- Pending, Successful, Failed, Reversed
+                                                              
+                                                                ProcessedAt DATETIME2 NULL
+                                                            );";
+
+
+        public const string INSERT_ACCOUNT_TRANSACTION = @"INSERT INTO AccountTransactions
+                                                           (AccountId, TransactionRef, Amount, TransactionType, TransactionDate, BalanceBefore, BalanceAfter, Narration, Status)
+                                                           VALUES (@AccountId, @TransactionRef, @Amount, @TransactionType, @TransactionDate, @BalanceBefore, @BalanceAfter, @Narration, @Status);";
+
+
+
+
         #endregion
 
 
